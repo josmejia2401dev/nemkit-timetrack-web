@@ -1,0 +1,184 @@
+@if (task(); as t) {
+  <div class="mb-6">
+    <a [routerLink]="['/activities', t.activityId]" class="text-xs hover:underline inline-flex items-center gap-1 mb-2" style="color: var(--deploy-text-muted)">
+      <i class="pi pi-arrow-left text-[10px]"></i> Back to activity
+    </a>
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <h1 class="deploy-page-title">{{ t.title }}</h1>
+      <div class="flex items-center gap-2">
+        @if (t.status !== 'done') {
+          <p-button label="Mark done" icon="pi pi-check" size="small" severity="success" [outlined]="true" (onClick)="markDone()" />
+        }
+        <p-select [ngModel]="t.status" (ngModelChange)="changeStatus($event)"
+                  [options]="statusOptions" optionLabel="label" optionValue="value" styleClass="w-40" />
+      </div>
+    </div>
+    @if (t.description) { <p class="text-sm mt-1" style="color: var(--deploy-text-muted)">{{ t.description }}</p> }
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <div class="lg:col-span-1 space-y-4">
+      <div class="deploy-card p-6 text-center">
+        <p class="text-xs font-semibold uppercase tracking-wide mb-2" style="color: var(--deploy-text-muted)">Timer</p>
+        <div class="text-4xl font-bold font-mono mb-4" style="color: var(--deploy-primary); font-variant-numeric: tabular-nums">
+          {{ isTimingThis() ? liveTime() : fmt(0) }}
+        </div>
+        @if (!isTimingThis()) {
+          <p-button label="Start" icon="pi pi-play" (onClick)="start()" severity="success" styleClass="w-full" />
+        } @else {
+          <div class="flex flex-col gap-2">
+            <div class="flex gap-2">
+              @if (timer.isRunning()) {
+                <p-button label="Pause" icon="pi pi-pause" (onClick)="pause()" severity="secondary" styleClass="flex-1" />
+              } @else {
+                <p-button label="Resume" icon="pi pi-play" (onClick)="resume()" severity="success" styleClass="flex-1" />
+              }
+              <p-button label="Stop" icon="pi pi-stop" (onClick)="stop()" [loading]="savingTimer()" severity="danger" styleClass="flex-1" />
+            </div>
+            <p-button label="Discard" icon="pi pi-times" (onClick)="discard()" [text]="true" severity="secondary" size="small" />
+          </div>
+        }
+      </div>
+
+      <div class="deploy-card p-5 space-y-3">
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Total tracked</p>
+          <p class="text-xl font-bold mt-0.5" style="color: var(--deploy-text)">{{ fmt(t.totalMs) }}</p>
+          <div class="flex gap-3 mt-1 text-[10px]">
+            <span style="color: var(--deploy-primary)">● {{ fmtShort(productiveMs()) }} productive</span>
+            <span style="color: var(--deploy-text-muted)">● {{ fmtShort(overheadMs()) }} mgmt</span>
+          </div>
+        </div>
+        @if (t.estimatedMinutes > 0) {
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Estimate</p>
+              <span class="text-xs font-medium" [style.color]="variancePct() > 0 ? 'var(--deploy-error)' : 'var(--deploy-success)'">
+                {{ variancePct() > 0 ? '+' : '' }}{{ variancePct() }}%
+              </span>
+            </div>
+            <div class="deploy-progress-track">
+              <div class="deploy-progress-fill" [class.deploy-progress-fill--cpu]="variancePct() <= 0" [class.deploy-progress-fill--ram]="variancePct() > 0" [style.width.%]="progressPct()"></div>
+            </div>
+            <p class="text-[10px] mt-1" style="color: var(--deploy-text-muted)">{{ fmtShort(productiveMs()) }} productive of {{ t.estimatedMinutes }}m estimated</p>
+          </div>
+        }
+        <div class="grid grid-cols-2 gap-2 pt-2" style="border-top: 1px solid var(--deploy-border)">
+          <div>
+            <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Sessions</p>
+            <p class="text-sm font-medium mt-0.5" style="color: var(--deploy-text)">{{ sessionCount() }}</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Avg session</p>
+            <p class="text-sm font-medium mt-0.5" style="color: var(--deploy-text)">{{ fmtShort(avgSessionMs()) }}</p>
+          </div>
+        </div>
+        @if (t.category || t.aiAssisted || t.technologies.length) {
+          <div class="flex flex-wrap gap-1 pt-2" style="border-top: 1px solid var(--deploy-border)">
+            @if (t.category) { <span class="text-[10px] px-1.5 py-0.5 rounded" style="background: var(--deploy-surface-2); color: var(--deploy-text-secondary)">{{ t.category }}</span> }
+            @if (t.aiAssisted) { <span class="text-[10px] px-1.5 py-0.5 rounded inline-flex items-center gap-0.5" style="background: var(--deploy-primary-subtle); color: var(--deploy-primary)"><i class="pi pi-sparkles text-[9px]"></i>AI</span> }
+            @for (tech of t.technologies; track tech) { <span class="text-[10px] px-1.5 py-0.5 rounded" style="background: var(--deploy-surface-2); color: var(--deploy-text-secondary)">{{ tech }}</span> }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="lg:col-span-2">
+      <div class="deploy-card overflow-hidden">
+        <div class="px-5 py-3.5 flex items-center justify-between" style="border-bottom: 1px solid var(--deploy-border)">
+          <h2 class="text-sm font-semibold" style="color: var(--deploy-text)">Time records</h2>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--deploy-surface-2); color: var(--deploy-text-muted)">
+              {{ t.timeRecords.length }} entries
+            </span>
+            <p-button label="Add time" icon="pi pi-plus" size="small" [text]="true" (onClick)="openManual()" />
+          </div>
+        </div>
+        @if (t.timeRecords.length === 0) {
+          <div class="py-10 text-center">
+            <p class="text-sm" style="color: var(--deploy-text-muted)">No time recorded yet</p>
+            <p class="text-xs mt-1" style="color: var(--deploy-text-muted)">Start the timer to log your first interval</p>
+          </div>
+        } @else {
+          <div class="overflow-x-auto">
+            <table class="deploy-table">
+              <thead>
+                <tr>
+                  <th>Started</th><th>Ended</th><th>Duration</th><th>Type</th><th>Description</th><th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of t.timeRecords; track r.id) {
+                  <tr>
+                    <td data-label="Started" class="text-xs" style="color: var(--deploy-text-secondary)">{{ r.start | date:'short' }}</td>
+                    <td data-label="Ended" class="text-xs" style="color: var(--deploy-text-secondary)">{{ r.end | date:'short' }}</td>
+                    <td data-label="Duration" class="font-mono text-xs font-medium" style="color: var(--deploy-primary)">{{ fmt(r.durationMs) }}</td>
+                    <td data-label="Type">
+                      <span class="text-[10px] font-medium px-1.5 py-0.5 rounded" style="background: var(--deploy-surface-2); color: var(--deploy-text-secondary)">{{ typeLabel(r.type) }}</span>
+                    </td>
+                    <td data-label="Description" class="text-xs" style="color: var(--deploy-text-muted)">{{ r.note || '—' }}</td>
+                    <td data-label="Actions" class="text-right">
+                      <div class="deploy-actions justify-end inline-flex">
+                        <p-button icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger" size="small" (onClick)="removeRecord(r.id)" pTooltip="Remove" tooltipPosition="top" />
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Manual time entry dialog -->
+<p-dialog header="Add time manually" [visible]="manualDialog()" (visibleChange)="manualDialog.set($event)"
+          [modal]="true" [draggable]="false" [style]="{width: '440px'}">
+  <div class="space-y-4">
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Start *</label>
+      <p-datepicker [(ngModel)]="manualForm.start" [showTime]="true" [showIcon]="true" dateFormat="yy-mm-dd" styleClass="w-full" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">End *</label>
+      <p-datepicker [(ngModel)]="manualForm.end" [showTime]="true" [showIcon]="true" dateFormat="yy-mm-dd" styleClass="w-full" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Type *</label>
+      <p-select [(ngModel)]="manualForm.type" [options]="typeOptions" optionLabel="label" optionValue="value" styleClass="w-full" appendTo="body" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Description</label>
+      <textarea [(ngModel)]="manualForm.note" rows="2" placeholder="What did you work on?" class="w-full text-sm p-2.5 rounded-lg border resize-none" style="border-color: var(--deploy-border)"></textarea>
+    </div>
+  </div>
+  <ng-template #footer>
+    <p-button label="Cancel" [text]="true" severity="secondary" (onClick)="manualDialog.set(false)" />
+    <p-button label="Add" icon="pi pi-check" [loading]="savingManual()" (onClick)="saveManual()" severity="primary" />
+  </ng-template>
+</p-dialog>
+
+<!-- Stop timer details dialog (type + description) -->
+<p-dialog header="Save time entry" [visible]="stopDialog()" (visibleChange)="stopDialog.set($event)"
+          [modal]="true" [closable]="false" [draggable]="false" [style]="{width: '440px'}">
+  @if (stopPayload) {
+    <p class="text-sm mb-4" style="color: var(--deploy-text-muted)">
+      Tracked <strong style="color: var(--deploy-primary)">{{ fmt(stopPayload.durationMs) }}</strong>. Add details before saving.
+    </p>
+  }
+  <div class="space-y-4">
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Type *</label>
+      <p-select [(ngModel)]="stopForm.type" [options]="typeOptions" optionLabel="label" optionValue="value" styleClass="w-full" appendTo="body" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Description</label>
+      <textarea [(ngModel)]="stopForm.note" rows="3" placeholder="What did you work on?" class="w-full text-sm p-2.5 rounded-lg border resize-none" style="border-color: var(--deploy-border)"></textarea>
+    </div>
+  </div>
+  <ng-template #footer>
+    <p-button label="Save" icon="pi pi-check" [loading]="savingTimer()" (onClick)="confirmStop()" severity="primary" />
+  </ng-template>
+</p-dialog>

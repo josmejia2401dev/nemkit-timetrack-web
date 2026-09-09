@@ -1,0 +1,206 @@
+@if (project(); as p) {
+  <div class="mb-6">
+    <a routerLink="/projects" class="text-xs hover:underline inline-flex items-center gap-1 mb-2" style="color: var(--deploy-text-muted)">
+      <i class="pi pi-arrow-left text-[10px]"></i> Projects
+    </a>
+    <div class="flex items-center gap-3">
+      <span class="w-4 h-4 rounded-full" [style.background]="p.color"></span>
+      <h1 class="deploy-page-title">{{ p.name }}</h1>
+    </div>
+    @if (p.company || p.client) {
+      <p class="text-sm mt-1" style="color: var(--deploy-text-secondary)">
+        @if (p.company) { <span class="font-medium">{{ p.company }}</span> }
+        @if (p.company && p.client) { <span> · </span> }
+        @if (p.client) { <span>{{ p.client }}</span> }
+      </p>
+    }
+    @if (p.description) { <p class="text-sm mt-1" style="color: var(--deploy-text-muted)">{{ p.description }}</p> }
+  </div>
+
+  <!-- ═══ Project metrics ═══ -->
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+    <div class="deploy-stat-card deploy-stat-card--primary">
+      <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Productive vs Estimated</p>
+      <div class="flex items-baseline gap-2 mt-1">
+        <div>
+          <span class="text-[9px] uppercase" style="color: var(--deploy-text-muted)">Prod.</span>
+          <p class="text-lg font-bold leading-none" style="color: var(--deploy-primary)">{{ fmt(metrics().productiveMs) }}</p>
+        </div>
+        <span style="color: var(--deploy-text-muted)">/</span>
+        <div>
+          <span class="text-[9px] uppercase" style="color: var(--deploy-text-muted)">Est.</span>
+          <p class="text-lg font-bold leading-none" style="color: var(--deploy-text-secondary)">{{ activityEstimatedMs() > 0 ? fmt(activityEstimatedMs()) : '—' }}</p>
+        </div>
+      </div>
+      @if (activityEstimatedMs() > 0) {
+        <p class="text-[10px] mt-1" [style.color]="projectVariancePct() > 0 ? 'var(--deploy-error)' : 'var(--deploy-success)'">
+          {{ projectVariancePct() > 0 ? '+' : '' }}{{ projectVariancePct() }}% vs estimate
+        </p>
+      }
+    </div>
+
+    <div class="deploy-stat-card deploy-stat-card--danger">
+      <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Meetings & mgmt</p>
+      <p class="text-lg font-bold mt-1" style="color: var(--deploy-text)">{{ fmt(metrics().overheadMs) }}</p>
+      <p class="text-[10px] mt-1" style="color: var(--deploy-text-muted)">Total: {{ fmt(metrics().trackedMs) }}</p>
+      <p class="text-[10px]" style="color: var(--deploy-text-muted)">Not counted in estimate</p>
+    </div>
+    <div class="deploy-stat-card deploy-stat-card--success">
+      <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Completion</p>
+      <p class="text-lg font-bold mt-1" style="color: var(--deploy-text)">{{ metrics().completionPct }}%</p>
+      <div class="deploy-progress-track mt-2">
+        <div class="deploy-progress-fill deploy-progress-fill--cpu" [style.width.%]="metrics().completionPct"></div>
+      </div>
+      <p class="text-[10px] mt-1" style="color: var(--deploy-text-muted)">{{ metrics().done }} of {{ metrics().total }} tasks</p>
+    </div>
+    <div class="deploy-stat-card deploy-stat-card--info">
+      <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Activities & Tasks</p>
+      <p class="text-lg font-bold mt-1" style="color: var(--deploy-text)">{{ activities().length }} <span class="text-xs font-normal" style="color: var(--deploy-text-muted)">activities</span></p>
+      <div class="flex gap-2 mt-1 text-[10px]">
+        <span style="color: var(--deploy-success)">● {{ metrics().done }}</span>
+        <span style="color: var(--deploy-warning)">● {{ metrics().inProgress }}</span>
+        <span style="color: var(--deploy-text-muted)">● {{ metrics().pending }}</span>
+      </div>
+    </div>
+    <div class="deploy-stat-card deploy-stat-card--warning">
+      <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Insights</p>
+      <p class="text-sm font-medium mt-1" style="color: var(--deploy-text)">{{ fmt(metrics().avgPerTaskMs) }} <span class="text-[10px] font-normal" style="color: var(--deploy-text-muted)">avg/task</span></p>
+      <div class="flex gap-2 mt-1 text-[10px]" style="color: var(--deploy-text-muted)">
+        <span><i class="pi pi-list text-[9px] mr-0.5"></i>{{ metrics().totalRecords }}</span>
+        <span><i class="pi pi-sparkles text-[9px] mr-0.5"></i>{{ metrics().aiAssisted }} AI</span>
+      </div>
+    </div>
+  </div>
+
+  <p-tabs value="activities">
+    <p-tablist>
+      <p-tab value="activities"><i class="pi pi-list mr-2"></i>Activities</p-tab>
+      <p-tab value="notes"><i class="pi pi-book mr-2"></i>Notes</p-tab>
+    </p-tablist>
+
+    <p-tabpanels>
+      <p-tabpanel value="activities">
+        <div class="flex justify-end mb-4">
+          <p-button label="New activity" icon="pi pi-plus" size="small" (onClick)="openActCreate()" severity="primary" />
+        </div>
+        @if (activities().length === 0) {
+          <div class="deploy-empty">
+            <p class="deploy-empty__title">No activities yet</p>
+            <p class="deploy-empty__desc">Add an activity to group your tasks.</p>
+          </div>
+        } @else {
+          <div class="space-y-2">
+            @for (a of activities(); track a.id) {
+              <div class="deploy-card deploy-card-hover p-4 cursor-pointer flex items-center justify-between" (click)="openActivity(a)">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style="background: var(--deploy-surface-2)">
+                    <i class="pi pi-list text-sm" style="color: var(--deploy-text-secondary)"></i>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="font-medium text-sm truncate" style="color: var(--deploy-text)">{{ a.name }}</p>
+                    @if (a.description) { <p class="text-xs truncate" style="color: var(--deploy-text-muted)">{{ a.description }}</p> }
+                    @if (a.technologies.length) {
+                      <div class="flex flex-wrap gap-1 mt-1">
+                        @for (t of a.technologies; track t) {
+                          <span class="text-[10px] px-1.5 py-0.5 rounded" style="background: var(--deploy-primary-subtle); color: var(--deploy-primary)">{{ t }}</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+                <div class="deploy-actions flex-shrink-0">
+                  <p-button icon="pi pi-pencil" [rounded]="true" [text]="true" severity="secondary" size="small" (onClick)="openActEdit(a, $event)" pTooltip="Edit" tooltipPosition="top" />
+                  <p-button icon="pi pi-inbox" [rounded]="true" [text]="true" severity="secondary" size="small" (onClick)="archiveActivity(a, $event)" pTooltip="Archive" tooltipPosition="top" />
+                  <p-button icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger" size="small" (onClick)="removeActivity(a, $event)" pTooltip="Delete" tooltipPosition="top" />
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </p-tabpanel>
+
+      <p-tabpanel value="notes">
+        <div class="flex justify-end mb-4">
+          <p-button label="New note" icon="pi pi-plus" size="small" (onClick)="openNoteCreate()" severity="primary" />
+        </div>
+        @if (notes().length === 0) {
+          <div class="deploy-empty">
+            <p class="deploy-empty__title">No notes yet</p>
+            <p class="deploy-empty__desc">Save relevant info: commands, links, reminders.</p>
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @for (n of notes(); track n.id) {
+              <div class="deploy-card p-4">
+                <div class="flex items-start justify-between mb-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    @if (n.pinned) { <i class="pi pi-star-fill text-xs" style="color: var(--deploy-warning)"></i> }
+                    <h3 class="font-semibold text-sm truncate" style="color: var(--deploy-text)">{{ n.title }}</h3>
+                  </div>
+                  <div class="deploy-actions flex-shrink-0">
+                    <p-button [icon]="n.pinned ? 'pi pi-star-fill' : 'pi pi-star'" [rounded]="true" [text]="true" severity="secondary" size="small" (onClick)="togglePin(n)" pTooltip="Pin" tooltipPosition="top" />
+                    <p-button icon="pi pi-pencil" [rounded]="true" [text]="true" severity="secondary" size="small" (onClick)="openNoteEdit(n)" pTooltip="Edit" tooltipPosition="top" />
+                    <p-button icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger" size="small" (onClick)="removeNote(n)" pTooltip="Delete" tooltipPosition="top" />
+                  </div>
+                </div>
+                @if (n.content) {
+                  <pre class="text-xs whitespace-pre-wrap font-sans line-clamp-6" style="color: var(--deploy-text-secondary)">{{ n.content }}</pre>
+                }
+              </div>
+            }
+          </div>
+        }
+      </p-tabpanel>
+    </p-tabpanels>
+  </p-tabs>
+}
+
+<!-- Activity dialog -->
+<p-dialog [header]="actEditingId ? 'Edit activity' : 'New activity'" [visible]="actDialog()" (visibleChange)="actDialog.set($event)"
+          [modal]="true" [draggable]="false" [style]="{width: '440px'}">
+  <div class="space-y-4">
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Name *</label>
+      <input pInputText [(ngModel)]="actForm.name" placeholder="Development, Meetings, QA..." class="w-full" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Description</label>
+      <textarea [(ngModel)]="actForm.description" rows="3" class="w-full text-sm p-2.5 rounded-lg border resize-none" style="border-color: var(--deploy-border)"></textarea>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Technologies</label>
+      <p-chips [(ngModel)]="actForm.technologies" placeholder="Add technology + Enter" styleClass="w-full" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Tags</label>
+      <p-chips [(ngModel)]="actForm.tags" placeholder="Add tag + Enter" styleClass="w-full" />
+    </div>
+  </div>
+  <ng-template #footer>
+    <p-button label="Cancel" [text]="true" severity="secondary" (onClick)="actDialog.set(false)" />
+    <p-button [label]="actEditingId ? 'Update' : 'Create'" icon="pi pi-check" [loading]="actLoading()" (onClick)="saveActivity()" severity="primary" />
+  </ng-template>
+</p-dialog>
+
+<!-- Note dialog -->
+<p-dialog [header]="noteEditingId ? 'Edit note' : 'New note'" [visible]="noteDialog()" (visibleChange)="noteDialog.set($event)"
+          [modal]="true" [draggable]="false" [style]="{width: '560px'}">
+  <div class="space-y-4">
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Title *</label>
+      <input pInputText [(ngModel)]="noteForm.title" placeholder="Deploy commands, VPN access..." class="w-full" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Content</label>
+      <textarea [(ngModel)]="noteForm.content" rows="8" placeholder="Write anything relevant..."
+                class="w-full text-sm p-2.5 rounded-lg border resize-y font-mono" style="border-color: var(--deploy-border)"></textarea>
+    </div>
+    <label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--deploy-text-secondary)">
+      <input type="checkbox" [(ngModel)]="noteForm.pinned" /> Pin this note
+    </label>
+  </div>
+  <ng-template #footer>
+    <p-button label="Cancel" [text]="true" severity="secondary" (onClick)="noteDialog.set(false)" />
+    <p-button [label]="noteEditingId ? 'Update' : 'Create'" icon="pi pi-check" [loading]="noteLoading()" (onClick)="saveNote()" severity="primary" />
+  </ng-template>
+</p-dialog>

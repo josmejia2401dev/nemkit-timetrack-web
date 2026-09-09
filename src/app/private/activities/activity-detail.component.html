@@ -1,0 +1,212 @@
+@if (activity(); as a) {
+  <div class="mb-6">
+    <a [routerLink]="['/projects', a.projectId]" class="text-xs hover:underline inline-flex items-center gap-1 mb-2" style="color: var(--deploy-text-muted)">
+      <i class="pi pi-arrow-left text-[10px]"></i> Back to project
+    </a>
+    <div class="deploy-page-header">
+      <h1 class="deploy-page-title">{{ a.name }}</h1>
+      <div class="flex items-center gap-2">
+        <p-button icon="pi pi-pencil" [rounded]="true" [text]="true" severity="secondary" (onClick)="openActEdit()" pTooltip="Edit activity" tooltipPosition="bottom" />
+        <p-button label="New task" icon="pi pi-plus" (onClick)="openCreate()" severity="primary" />
+      </div>
+    </div>
+    @if (a.description) { <p class="text-sm" style="color: var(--deploy-text-muted)">{{ a.description }}</p> }
+    @if (a.technologies.length || a.tags.length) {
+      <div class="flex flex-wrap gap-1 mt-2">
+        @for (tech of a.technologies; track tech) { <span class="text-[10px] px-1.5 py-0.5 rounded" style="background: var(--deploy-primary-subtle); color: var(--deploy-primary)">{{ tech }}</span> }
+        @for (tag of a.tags; track tag) { <span class="text-[10px] px-1.5 py-0.5 rounded" style="background: var(--deploy-surface-2); color: var(--deploy-text-secondary)">#{{ tag }}</span> }
+      </div>
+    }
+  </div>
+
+  <!-- ═══ Metrics ═══ -->
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+    <!-- Productive vs Estimated -->
+    <div class="deploy-stat-card deploy-stat-card--primary">
+      <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Productive vs Estimated</p>
+      <div class="flex items-baseline gap-2 mt-1">
+        <div>
+          <span class="text-[9px] uppercase" style="color: var(--deploy-text-muted)">Prod.</span>
+          <p class="text-lg font-bold leading-none" style="color: var(--deploy-primary)">{{ fmt(metrics().productiveMs) }}</p>
+        </div>
+        <span style="color: var(--deploy-text-muted)">/</span>
+        <div>
+          <span class="text-[9px] uppercase" style="color: var(--deploy-text-muted)">Est.</span>
+          <p class="text-lg font-bold leading-none" style="color: var(--deploy-text-secondary)">{{ a.estimatedMinutes > 0 ? fmt(activityEstimatedMs()) : '—' }}</p>
+        </div>
+      </div>
+      @if (a.estimatedMinutes > 0) {
+        <div class="deploy-progress-track mt-2">
+          <div class="deploy-progress-fill" [class.deploy-progress-fill--cpu]="activityVariancePct() <= 0" [class.deploy-progress-fill--ram]="activityVariancePct() > 0" [style.width.%]="activityUsagePct() > 100 ? 100 : activityUsagePct()"></div>
+        </div>
+        <p class="text-[10px] mt-1" [style.color]="activityVariancePct() > 0 ? 'var(--deploy-error)' : 'var(--deploy-success)'">
+          {{ activityVariancePct() > 0 ? '+' : '' }}{{ activityVariancePct() }}% vs estimate
+        </p>
+      } @else {
+        <p class="text-[10px] mt-1" style="color: var(--deploy-text-muted)">No estimate set</p>
+      }
+    </div>
+
+    <!-- Meetings & management -->
+    <div class="deploy-stat-card deploy-stat-card--danger">
+      <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Meetings & mgmt</p>
+      <p class="text-lg font-bold mt-1" style="color: var(--deploy-text)">{{ fmt(metrics().overheadMs) }}</p>
+      <p class="text-[10px] mt-1" style="color: var(--deploy-text-muted)">
+        Total: {{ fmt(metrics().trackedMs) }}
+      </p>
+      <p class="text-[10px]" style="color: var(--deploy-text-muted)">Not counted in estimate</p>
+    </div>
+
+    <!-- Completion -->
+    <div class="deploy-stat-card deploy-stat-card--success">
+      <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Completion</p>
+      <p class="text-lg font-bold mt-1" style="color: var(--deploy-text)">{{ metrics().completionPct }}%</p>
+      <div class="deploy-progress-track mt-2">
+        <div class="deploy-progress-fill deploy-progress-fill--cpu" [style.width.%]="metrics().completionPct"></div>
+      </div>
+      <p class="text-[10px] mt-1" style="color: var(--deploy-text-muted)">{{ metrics().done }} of {{ metrics().total }} done</p>
+    </div>
+
+    <!-- Task breakdown -->
+    <div class="deploy-stat-card deploy-stat-card--info">
+      <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Tasks</p>
+      <p class="text-lg font-bold mt-1" style="color: var(--deploy-text)">{{ metrics().total }}</p>
+      <div class="flex gap-2 mt-1.5 text-[10px]">
+        <span style="color: var(--deploy-success)">● {{ metrics().done }} done</span>
+        <span style="color: var(--deploy-warning)">● {{ metrics().inProgress }} wip</span>
+        <span style="color: var(--deploy-text-muted)">● {{ metrics().pending }} pend</span>
+      </div>
+    </div>
+
+    <!-- Avg + AI + records -->
+    <div class="deploy-stat-card deploy-stat-card--warning">
+      <p class="text-[10px] font-semibold uppercase tracking-wide" style="color: var(--deploy-text-muted)">Insights</p>
+      <p class="text-sm font-medium mt-1" style="color: var(--deploy-text)">{{ fmt(metrics().avgPerTaskMs) }} <span class="text-[10px] font-normal" style="color: var(--deploy-text-muted)">avg/task</span></p>
+      <div class="flex gap-2 mt-1 text-[10px]" style="color: var(--deploy-text-muted)">
+        <span><i class="pi pi-list text-[9px] mr-0.5"></i>{{ metrics().totalRecords }} records</span>
+        <span><i class="pi pi-sparkles text-[9px] mr-0.5"></i>{{ metrics().aiAssisted }} AI</span>
+      </div>
+    </div>
+  </div>
+
+  @if (tasks().length === 0) {
+    <div class="deploy-empty">
+      <p class="deploy-empty__title">No tasks yet</p>
+      <p class="deploy-empty__desc">Add a task and start tracking time on it.</p>
+    </div>
+  } @else {
+    <div class="space-y-2">
+      @for (t of tasks(); track t.id) {
+        <div class="deploy-card deploy-card-hover p-4 cursor-pointer" (click)="open(t)">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="deploy-badge" [class]="statusBadge(t.status)">
+                <span class="deploy-badge__dot"></span>
+                {{ t.status.replace('_', ' ') }}
+              </span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <p class="font-medium text-sm truncate" style="color: var(--deploy-text)">{{ t.title }}</p>
+                  @if (t.category) { <span class="text-[10px] px-1.5 py-0.5 rounded" style="background: var(--deploy-surface-2); color: var(--deploy-text-secondary)">{{ t.category }}</span> }
+                  @if (t.aiAssisted) { <span class="text-[10px] px-1.5 py-0.5 rounded inline-flex items-center gap-0.5" style="background: var(--deploy-primary-subtle); color: var(--deploy-primary)"><i class="pi pi-sparkles text-[9px]"></i>AI</span> }
+                </div>
+                <p class="text-xs" style="color: var(--deploy-text-muted)">
+                  <i class="pi pi-clock text-[10px] mr-1"></i>{{ fmt(t.totalMs) }}
+                  @if (t.estimatedMinutes > 0) { <span class="ml-1">/ est. {{ t.estimatedMinutes }}m</span> }
+                  <span class="ml-2"><i class="pi pi-list text-[10px] mr-1"></i>{{ t.timeRecords.length }} {{ t.timeRecords.length === 1 ? 'entry' : 'entries' }}</span>
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              @if (timer.state()?.taskId === t.id) {
+                <span class="deploy-badge deploy-badge--running mr-1"><span class="deploy-badge__dot deploy-badge__dot--pulse"></span>timing</span>
+              }
+              <div class="deploy-actions">
+                @if (timer.state()?.taskId !== t.id) {
+                  <p-button icon="pi pi-play" [rounded]="true" [text]="true" severity="success" size="small"
+                            (onClick)="startTimer(t, $event)" pTooltip="Start timer" tooltipPosition="top" />
+                }
+                <p-button [icon]="t.status === 'done' ? 'pi pi-check-circle' : 'pi pi-circle'"
+                          [rounded]="true" [text]="true" size="small"
+                          [severity]="t.status === 'done' ? 'success' : 'secondary'"
+                          (onClick)="toggleDone(t, $event)"
+                          [pTooltip]="t.status === 'done' ? 'Reopen' : 'Mark done'" tooltipPosition="top" />
+                <p-button icon="pi pi-pencil" [rounded]="true" [text]="true" severity="secondary" size="small" (onClick)="openEdit(t, $event)" pTooltip="Edit" tooltipPosition="top" />
+                <p-button icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger" size="small" (onClick)="remove(t, $event)" pTooltip="Delete" tooltipPosition="top" />
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+}
+
+<p-dialog [header]="editingId ? 'Edit task' : 'New task'" [visible]="dialog()" (visibleChange)="dialog.set($event)"
+          [modal]="true" [draggable]="false" [style]="{width: '480px'}">
+  <div class="space-y-4">
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Title *</label>
+      <input pInputText [(ngModel)]="form.title" placeholder="Implement login" class="w-full" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Description</label>
+      <textarea [(ngModel)]="form.description" rows="3" class="w-full text-sm p-2.5 rounded-lg border resize-none" style="border-color: var(--deploy-border)"></textarea>
+    </div>
+    <div class="flex gap-3">
+      <div class="flex-1 flex flex-col gap-1.5">
+        <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Estimated (minutes)</label>
+        <p-inputNumber [(ngModel)]="form.estimatedMinutes" [min]="0" styleClass="w-full" />
+      </div>
+      <div class="flex-1 flex flex-col gap-1.5">
+        <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Category</label>
+        <input pInputText [(ngModel)]="form.category" placeholder="CRUD, Auth, Report..." class="w-full" />
+      </div>
+    </div>
+    @if (editingId) {
+      <div class="flex flex-col gap-1.5">
+        <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Status</label>
+        <p-select [(ngModel)]="form.status" [options]="statusOptions" optionLabel="label" optionValue="value" styleClass="w-full" appendTo="body" />
+      </div>
+    }
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Technologies</label>
+      <p-chips [(ngModel)]="form.technologies" placeholder="Add technology + Enter" styleClass="w-full" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Tags</label>
+      <p-chips [(ngModel)]="form.tags" placeholder="Add tag + Enter" styleClass="w-full" />
+    </div>
+    <label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--deploy-text-secondary)">
+      <p-checkbox [(ngModel)]="form.aiAssisted" [binary]="true" /> Done with AI assistance
+    </label>
+  </div>
+  <ng-template #footer>
+    <p-button label="Cancel" [text]="true" severity="secondary" (onClick)="dialog.set(false)" />
+    <p-button [label]="editingId ? 'Update' : 'Create'" icon="pi pi-check" [loading]="loading()" (onClick)="save()" severity="primary" />
+  </ng-template>
+</p-dialog>
+
+<!-- Edit activity dialog -->
+<p-dialog header="Edit activity" [visible]="actDialog()" (visibleChange)="actDialog.set($event)"
+          [modal]="true" [draggable]="false" [style]="{width: '440px'}">
+  <div class="space-y-4">
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Name *</label>
+      <input pInputText [(ngModel)]="actForm.name" class="w-full" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Description</label>
+      <textarea [(ngModel)]="actForm.description" rows="3" class="w-full text-sm p-2.5 rounded-lg border resize-none" style="border-color: var(--deploy-border)"></textarea>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Estimated time (minutes)</label>
+      <p-inputNumber [(ngModel)]="actForm.estimatedMinutes" [min]="0" styleClass="w-full" />
+      <small class="text-[10px]" style="color: var(--deploy-text-muted)">Your estimate for the whole activity, compared against actual tracked time.</small>
+    </div>
+  </div>
+  <ng-template #footer>
+    <p-button label="Cancel" [text]="true" severity="secondary" (onClick)="actDialog.set(false)" />
+    <p-button label="Update" icon="pi pi-check" [loading]="actLoading()" (onClick)="saveActivity()" severity="primary" />
+  </ng-template>
+</p-dialog>

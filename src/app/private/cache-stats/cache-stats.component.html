@@ -1,0 +1,180 @@
+<div class="deploy-page-header">
+  <div>
+    <h1 class="deploy-page-title">Cache</h1>
+    <p class="text-sm" style="color: var(--deploy-text-muted)">
+      Cache administration (values are read-only).
+      @if (generatedAt()) {
+        <span> · updated {{ generatedAt() | date:'MMM d, HH:mm:ss' }}</span>
+      }
+    </p>
+  </div>
+  <p-button icon="pi pi-refresh" [rounded]="true" [text]="true" severity="secondary"
+            (onClick)="load()" [loading]="loading()" pTooltip="Reload" tooltipPosition="left" />
+</div>
+
+<!-- Summary cards -->
+@if (totals(); as t) {
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+    <div class="deploy-card p-4">
+      <p class="cs-metric-label">Caches</p>
+      <p class="cs-metric-value">{{ t.caches }}</p>
+    </div>
+    <div class="deploy-card p-4">
+      <p class="cs-metric-label">Hits</p>
+      <p class="cs-metric-value">{{ t.hits | number }}</p>
+    </div>
+    <div class="deploy-card p-4">
+      <p class="cs-metric-label">Misses</p>
+      <p class="cs-metric-value">{{ t.misses | number }}</p>
+    </div>
+    <div class="deploy-card p-4">
+      <p class="cs-metric-label">Hit rate</p>
+      <p class="cs-metric-value" [class]="hitRateClass(t.hitRate)">{{ asPercent(t.hitRate) }}%</p>
+    </div>
+  </div>
+}
+
+<!-- Per-cache table -->
+<div class="deploy-card overflow-hidden">
+  <div class="px-5 py-3" style="border-bottom: 1px solid var(--deploy-border)">
+    <h2 class="text-sm font-semibold" style="color: var(--deploy-text)">Caches</h2>
+  </div>
+
+  @if (caches().length === 0) {
+    <div class="py-12 text-center">
+      <p class="text-sm" style="color: var(--deploy-text-muted)">No caches registered</p>
+    </div>
+  } @else {
+    <div class="overflow-x-auto">
+      <table class="cs-table">
+        <colgroup>
+          <col style="width: 20%" />
+          <col style="width: 12%" />
+          <col style="width: 10%" />
+          <col style="width: 10%" />
+          <col style="width: 10%" />
+          <col style="width: 10%" />
+          <col style="width: 11%" />
+          <col style="width: 10%" />
+          <col style="width: 7%" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="cs-l">Name</th>
+            <th class="cs-l">Type</th>
+            <th class="cs-r">Entries</th>
+            <th class="cs-r">Max</th>
+            <th class="cs-r">Hits</th>
+            <th class="cs-r">Misses</th>
+            <th class="cs-r">Hit rate</th>
+            <th class="cs-r">Evictions</th>
+            <th class="cs-l">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of caches(); track c.name) {
+            <tr>
+              <td class="cs-l font-medium">{{ c.name }}</td>
+              <td class="cs-l"><span class="cs-badge">{{ c.type }}</span></td>
+              <td class="cs-r">{{ (c.size ?? ((c.l1Size ?? 0) + (c.l2Size ?? 0))) | number }}</td>
+              <td class="cs-r">{{ c.maxSize != null ? (c.maxSize | number) : '—' }}</td>
+              <td class="cs-r">{{ (c.hits ?? 0) | number }}</td>
+              <td class="cs-r">{{ (c.misses ?? 0) | number }}</td>
+              <td class="cs-r" [class]="hitRateClass(c.hitRate)">{{ asPercent(c.hitRate) }}%</td>
+              <td class="cs-r">{{ (c.evictions ?? 0) | number }}</td>
+              <td class="cs-l">
+                <p-button icon="pi pi-folder-open" [text]="true" severity="secondary"
+                          (onClick)="selectCache(c)" pTooltip="Manage entries" tooltipPosition="top" />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (selectedCache(); as selected) {
+  <div class="deploy-card mt-4 overflow-hidden">
+    <div class="px-5 py-3 flex flex-wrap items-center justify-between gap-3" style="border-bottom: 1px solid var(--deploy-border)">
+      <div>
+        <h2 class="text-sm font-semibold" style="color: var(--deploy-text)">{{ selected.name }}</h2>
+        <p class="text-xs" style="color: var(--deploy-text-muted)">{{ entryTotal() | number }} entries</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <input pInputText [(ngModel)]="entrySearch" (keyup.enter)="searchEntries()" placeholder="Search keys" />
+        <p-button icon="pi pi-search" [text]="true" (onClick)="searchEntries()" pTooltip="Search" />
+        <input pInputText [(ngModel)]="pattern" placeholder="Pattern, e.g. u:42:*" />
+        <p-button icon="pi pi-filter-slash" [text]="true" severity="warn" (onClick)="invalidatePattern()" pTooltip="Invalidate pattern" />
+        <p-button icon="pi pi-trash" [text]="true" severity="danger" (onClick)="clearCache()" pTooltip="Clear cache" />
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="cs-table">
+        <thead><tr><th class="cs-l">Key</th><th class="cs-r">Size</th><th class="cs-l">Memory</th><th class="cs-l">Disk</th><th class="cs-r">Actions</th></tr></thead>
+        <tbody>
+          @for (entry of entries(); track entry.key) {
+            <tr>
+              <td class="cs-l font-medium">{{ entry.key }}</td>
+              <td class="cs-r">{{ entry.sizeBytes | number }} B</td>
+              <td class="cs-l">{{ entry.availableInMemory ? 'Yes' : 'No' }}</td>
+              <td class="cs-l">{{ entry.availableOnDisk ? 'Yes' : 'No' }}</td>
+              <td class="cs-r">
+                <p-button icon="pi pi-eye" [text]="true" severity="secondary" (onClick)="viewEntry(entry)" pTooltip="View value" />
+                <p-button icon="pi pi-times" [text]="true" severity="danger" (onClick)="deleteEntry(entry)" pTooltip="Delete entry" />
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="text-center">No cache entries</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="px-5 py-3 flex justify-end items-center gap-3" style="border-top: 1px solid var(--deploy-border)">
+      <p-button icon="pi pi-angle-left" [text]="true" [disabled]="entryPage() <= 1" (onClick)="previousPage()" pTooltip="Previous page" />
+      <span class="text-xs" style="color: var(--deploy-text-muted)">{{ entryPage() }} / {{ entryTotalPages() || 1 }}</span>
+      <p-button icon="pi pi-angle-right" [text]="true" [disabled]="entryPage() >= entryTotalPages()" (onClick)="nextPage()" pTooltip="Next page" />
+    </div>
+  </div>
+}
+
+<p-dialog header="Cache entry" [visible]="detailVisible()" (visibleChange)="detailVisible.set($event)" [modal]="true" [style]="{width: 'min(900px, 92vw)'}">
+  @if (detail(); as item) {
+    <p class="text-xs mb-3" style="color: var(--deploy-text-muted)">{{ item.key }} · {{ item.sizeBytes | number }} B</p>
+    <pre class="cs-value">{{ formatValue(item.value) }}</pre>
+  }
+</p-dialog>
+
+<style>
+  .cs-metric-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--deploy-text-muted); margin-bottom: 0.35rem; }
+  .cs-metric-value { font-size: 1.5rem; font-weight: 700; color: var(--deploy-text); }
+
+  .cs-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 0.85rem;
+    min-width: 720px; }
+  .cs-table th { font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--deploy-text-muted); padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--deploy-border); white-space: nowrap;
+    user-select: none; }
+  .cs-table td { padding: 0.6rem 1rem; color: var(--deploy-text);
+    border-bottom: 1px solid var(--deploy-border); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .cs-table tbody tr:last-child td { border-bottom: none; }
+  .cs-table tbody tr:hover { background: var(--deploy-surface-1); }
+
+  /* Alineación consistente entre header y celda de cada columna */
+  .cs-l { text-align: left; }
+  .cs-r { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .cs-badge { font-size: 0.7rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 999px;
+    background: var(--deploy-surface-2); color: var(--deploy-text-secondary); }
+
+  .ke-rate--good { color: #16A34A; }
+  .ke-rate--mid  { color: #B45309; }
+  .ke-rate--low  { color: #DC2626; }
+  .cs-value { max-height: 60vh; overflow: auto; padding: 1rem; border-radius: 6px;
+    background: var(--deploy-surface-1); color: var(--deploy-text); white-space: pre-wrap;
+    overflow-wrap: anywhere; font-size: 0.8rem; }
+</style>

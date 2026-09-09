@@ -1,0 +1,84 @@
+<div class="deploy-page-header">
+  <h1 class="deploy-page-title">Logs</h1>
+  <p-button icon="pi pi-refresh" [rounded]="true" [text]="true" severity="secondary" (onClick)="loadFiles()" pTooltip="Reload files" tooltipPosition="left" />
+</div>
+
+<!-- Filters -->
+<div class="deploy-card p-4 mb-4">
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">File</label>
+      <p-select [(ngModel)]="selectedFile" [options]="files()" optionLabel="name" optionValue="name"
+                placeholder="Select a log file" styleClass="w-full" (onChange)="read()" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Level</label>
+      <p-select [(ngModel)]="level" [options]="levelOptions" optionLabel="label" optionValue="value" styleClass="w-full" (onChange)="read()" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Search</label>
+      <input pInputText [(ngModel)]="search" placeholder="Search in message..." class="w-full" (keyup.enter)="read()" />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label class="text-xs font-semibold" style="color: var(--deploy-text-secondary)">Limit</label>
+      <div class="flex gap-2">
+        <p-inputNumber [(ngModel)]="limit" [min]="1" [max]="2000" styleClass="flex-1" />
+        <p-button icon="pi pi-search" (onClick)="read()" severity="primary" [loading]="loading()" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Results -->
+<div class="deploy-card overflow-hidden">
+  <div class="px-5 py-3 flex items-center justify-between" style="border-bottom: 1px solid var(--deploy-border)">
+    <h2 class="text-sm font-semibold" style="color: var(--deploy-text)">Entries</h2>
+    <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--deploy-surface-2); color: var(--deploy-text-muted)">
+      {{ entries().length }} shown · {{ total() }} matched
+    </span>
+  </div>
+
+  @if (entries().length === 0) {
+    <div class="py-12 text-center">
+      <p class="text-sm" style="color: var(--deploy-text-muted)">No log entries</p>
+    </div>
+  } @else {
+    <div class="divide-y" style="border-color: var(--deploy-border)">
+      @for (e of entries(); track $index) {
+        <div class="px-4 py-2.5 hover:bg-[var(--deploy-surface-1)] cursor-pointer" (click)="toggle($index)">
+          <div class="flex items-start gap-3">
+            <span class="log-level" [class]="levelClass(e.level)">{{ e.level }}</span>
+            <span class="text-[11px] font-mono shrink-0 pt-0.5" style="color: var(--deploy-text-muted)">
+              {{ e.timestamp ? (e.timestamp | date:'MMM d, HH:mm:ss') : '—' }}
+            </span>
+            <span class="text-xs flex-1 min-w-0" style="color: var(--deploy-text)"
+                  [class.truncate]="expanded() !== $index">{{ e.message }}</span>
+            @if (e.requestId) {
+              <span class="text-[10px] font-mono shrink-0" style="color: var(--deploy-text-muted)">{{ e.requestId }}</span>
+            }
+          </div>
+
+          @if (expanded() === $index) {
+            <div class="mt-2 ml-16 space-y-2">
+              @if (metaOf(e)) {
+                <pre class="text-[11px] p-2.5 rounded-lg overflow-x-auto font-mono" style="background: var(--deploy-surface-2); color: var(--deploy-text-secondary)">{{ metaOf(e) }}</pre>
+              }
+              @if (e.stack) {
+                <pre class="text-[11px] p-2.5 rounded-lg overflow-x-auto font-mono" style="background: rgba(239,68,68,0.06); color: #DC2626">{{ e.stack }}</pre>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<style>
+  .log-level { font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.125rem 0.4rem; border-radius: 4px; flex-shrink: 0; }
+  .log-level--error { background: rgba(239,68,68,0.12); color: #DC2626; }
+  .log-level--warn { background: rgba(245,158,11,0.15); color: #B45309; }
+  .log-level--info { background: rgba(59,130,246,0.12); color: #2563EB; }
+  .log-level--http { background: rgba(139,92,246,0.12); color: #7C3AED; }
+  .log-level--debug { background: var(--deploy-surface-2); color: var(--deploy-text-muted); }
+</style>

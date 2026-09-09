@@ -1,0 +1,333 @@
+<div class="ke-root" (drop)="onDrop($event)" (dragover)="onDragOver($event)">
+  <!-- Toolbar: breadcrumbs + actions -->
+  <div class="flex items-center justify-between gap-2 flex-wrap mb-3">
+    <nav class="flex items-center gap-1 text-sm min-w-0 flex-wrap">
+      @for (crumb of breadcrumbs(); track crumb.id; let i = $index; let last = $last) {
+        <button type="button" class="ke-crumb" [class.ke-crumb--active]="last"
+                [class.ke-drop-hover]="dropTarget() === (crumb.id ?? 'root')"
+                (click)="goToCrumb(i)"
+                (dragover)="onCrumbDragOver($event, crumb.id)"
+                (dragleave)="dropTarget.set(null)"
+                (drop)="onCrumbDrop($event, crumb.id)">
+          @if (i === 0) { <i class="pi pi-home text-xs"></i> }
+          <span>{{ crumb.name }}</span>
+        </button>
+        @if (!last) { <i class="pi pi-angle-right text-[10px]" style="color: var(--deploy-text-muted)"></i> }
+      }
+    </nav>
+
+    <div class="flex items-center gap-1.5 shrink-0">
+      <p-button icon="pi pi-folder-plus" [rounded]="true" [text]="true" severity="secondary" size="small"
+                (onClick)="startNewFolder()" pTooltip="New folder" tooltipPosition="bottom" />
+      <p-button label="New" icon="pi pi-plus" size="small" (onClick)="toggleNewMenu($event)" />
+      <p-menu #newMenu [model]="newMenuItems" [popup]="true" appendTo="body" />
+      <label class="ke-upload-btn" pTooltip="Upload files (< 1MB)" tooltipPosition="bottom">
+        <i class="pi pi-upload"></i>
+        <input type="file" multiple hidden (change)="onFilesSelected($event)" />
+      </label>
+      <p-button icon="pi pi-refresh" [rounded]="true" [text]="true" severity="secondary" size="small"
+                (onClick)="load()" pTooltip="Refresh" tooltipPosition="bottom" />
+    </div>
+  </div>
+
+  <!-- Search bar -->
+  <div class="ke-search mb-3">
+    <i class="pi pi-search ke-search-icon"></i>
+    <input pInputText [(ngModel)]="searchQuery" class="w-full ke-search-input"
+           placeholder="Search by name, tags or content..."
+           (keyup.enter)="runSearch()" (keyup.escape)="clearSearch()" />
+    @if (searchActive() || searchQuery) {
+      <button type="button" class="ke-search-clear" (click)="clearSearch()" aria-label="Clear search">
+        <i class="pi pi-times"></i>
+      </button>
+    }
+    <p-button icon="pi pi-search" size="small" (onClick)="runSearch()" [loading]="searching()" />
+  </div>
+
+  <!-- Kind filter chips -->
+  <div class="flex items-center gap-1.5 mb-3 flex-wrap">
+    @for (chip of kindChips; track chip.label) {
+      <button type="button" class="ke-chip" [class.ke-chip--active]="kindFilter() === chip.value"
+              (click)="setKindFilter(chip.value)">
+        {{ chip.label }}
+      </button>
+    }
+  </div>
+
+  <!-- Search results view -->
+  @if (searchActive()) {
+    <div>
+      <p class="ke-section-label">
+        Search results
+        @if (!searching()) { <span class="font-normal" style="color: var(--deploy-text-muted)">· {{ searchResults().length }} found</span> }
+      </p>
+
+      @if (searching()) {
+        <div class="py-10 text-center">
+          <i class="pi pi-spin pi-spinner text-2xl" style="color: var(--deploy-text-muted)"></i>
+        </div>
+      } @else if (searchResults().length === 0) {
+        <div class="py-10 text-center">
+          <i class="pi pi-search text-2xl mb-2" style="color: var(--deploy-text-muted)"></i>
+          <p class="text-sm" style="color: var(--deploy-text-muted)">No matches for "{{ searchQuery }}"</p>
+        </div>
+      } @else {
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          @for (item of searchResults(); track item.id) {
+            <div class="ke-row ke-row--result">
+              <button type="button" class="ke-row-main ke-row-main--result" (click)="openFile(item)">
+                <i class="ke-file-icon" [class]="itemIcon(item)" [style.color]="kindColor(item.kind)"></i>
+                <span class="ke-result-body">
+                  <span class="ke-result-name">
+                    <span class="truncate">{{ item.name }}</span>
+                    @if (item.kind === 'bug') { <span class="ke-badge ke-badge--bug">bug</span> }
+                    @else if (item.kind === 'note') { <span class="ke-badge ke-badge--note">note</span> }
+                  </span>
+                  @if (item.folderPath) {
+                    <span class="ke-result-path"><i class="pi pi-folder text-[10px]"></i> {{ item.folderPath }}</span>
+                  }
+                </span>
+                <span class="ke-size">{{ formatSize(item.sizeBytes) }}</span>
+              </button>
+              <div class="ke-row-actions">
+                <p-button icon="pi pi-pencil" [rounded]="true" [text]="true" size="small" severity="secondary"
+                          (onClick)="openFile(item)" pTooltip="Edit" tooltipPosition="top" />
+                <p-button icon="pi pi-trash" [rounded]="true" [text]="true" size="small" severity="danger"
+                          (onClick)="deleteFile(item)" pTooltip="Delete" tooltipPosition="top" />
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Browse view (hidden while searching) -->
+  @if (!searchActive()) {
+
+  <!-- Inline new folder -->
+  @if (creatingFolder()) {
+    <div class="flex items-center gap-2 mb-3 p-2 rounded-lg" style="background: var(--deploy-surface-1)">
+      <i class="pi pi-folder" style="color: var(--deploy-primary, #6366F1)"></i>
+      <input pInputText [(ngModel)]="newFolderName" placeholder="Folder name" class="flex-1"
+             (keyup.enter)="saveNewFolder()" (keyup.escape)="cancelNewFolder()" autofocus />
+      <p-button icon="pi pi-check" size="small" (onClick)="saveNewFolder()" />
+      <p-button icon="pi pi-times" size="small" [text]="true" severity="secondary" (onClick)="cancelNewFolder()" />
+    </div>
+  }
+
+  <!-- Empty state -->
+  @if (isEmpty() && !loading()) {
+    <div class="py-12 text-center ke-dropzone">
+      <i class="pi pi-inbox text-3xl mb-2" style="color: var(--deploy-text-muted)"></i>
+      <p class="text-sm" style="color: var(--deploy-text-muted)">This folder is empty</p>
+      <p class="text-xs mt-1" style="color: var(--deploy-text-muted)">Drag &amp; drop files here, or use the toolbar above</p>
+      <p class="text-xs mt-0.5" style="color: var(--deploy-text-muted)">Tip: drag items onto a folder or breadcrumb to move them</p>
+    </div>
+  }
+
+  <!-- Folders -->
+  @if (folders().length) {
+    <div class="mb-4">
+      <p class="ke-section-label">Folders</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        @for (folder of folders(); track folder.id) {
+          <div class="ke-row" [class.ke-drop-hover]="dropTarget() === folder.id"
+               draggable="true"
+               (dragstart)="onDragStart($event, 'folder', folder.id)"
+               (dragend)="onDragEnd()"
+               (dragover)="onFolderDragOver($event, folder)"
+               (dragleave)="onFolderDragLeave(folder)"
+               (drop)="onFolderDrop($event, folder)">
+            <button type="button" class="ke-row-main" (click)="openFolder(folder)">
+              <i class="pi pi-folder ke-folder-icon"></i>
+              <span class="truncate">{{ folder.name }}</span>
+            </button>
+            <div class="ke-row-actions">
+              <p-button icon="pi pi-pencil" [rounded]="true" [text]="true" size="small" severity="secondary"
+                        (onClick)="renameFolder(folder)" pTooltip="Rename" tooltipPosition="top" />
+              <p-button icon="pi pi-trash" [rounded]="true" [text]="true" size="small" severity="danger"
+                        (onClick)="deleteFolder(folder)" pTooltip="Delete" tooltipPosition="top" />
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Entries (files / notes / bugs) -->
+  @if (items().length) {
+    <div>
+      <p class="ke-section-label">Entries</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        @for (item of items(); track item.id) {
+          <div class="ke-row"
+               draggable="true"
+               (dragstart)="onDragStart($event, 'item', item.id)"
+               (dragend)="onDragEnd()">
+            <button type="button" class="ke-row-main" (click)="openFile(item)">
+              <i class="ke-file-icon" [class]="itemIcon(item)" [style.color]="kindColor(item.kind)"></i>
+              <span class="truncate">{{ item.name }}</span>
+              @if (item.kind === 'bug') { <span class="ke-badge ke-badge--bug">bug</span> }
+              @else if (item.kind === 'note') { <span class="ke-badge ke-badge--note">note</span> }
+              <span class="ke-size">{{ formatSize(item.sizeBytes) }}</span>
+            </button>
+            <div class="ke-row-actions">
+              <p-button icon="pi pi-pencil" [rounded]="true" [text]="true" size="small" severity="secondary"
+                        (onClick)="openFile(item)" pTooltip="Edit" tooltipPosition="top" />
+              <p-button icon="pi pi-trash" [rounded]="true" [text]="true" size="small" severity="danger"
+                        (onClick)="deleteFile(item)" pTooltip="Delete" tooltipPosition="top" />
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  }
+  <!-- /Browse view -->
+</div>
+
+<!-- Editor dialog -->
+<p-dialog [visible]="editorVisible()" (visibleChange)="editorVisible.set($event)" [modal]="true"
+          [style]="{ width: '90vw', maxWidth: '900px' }" [draggable]="false" [dismissableMask]="true"
+          [header]="(editing() ? 'Edit ' : 'New ') + kindLabel(form.kind).toLowerCase()">
+  <div class="flex flex-col gap-3">
+    @if (editingPath()) {
+      <div class="ke-location">
+        <i class="pi pi-folder text-xs"></i>
+        <span>{{ editingPath() }}</span>
+      </div>
+    }
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="flex flex-col gap-1.5 md:col-span-2">
+        <label class="ke-form-label">
+          @if (form.kind === 'bug') { Title } @else { Name }
+        </label>
+        <input pInputText [(ngModel)]="form.name" class="w-full"
+               [placeholder]="form.kind === 'bug' ? 'e.g. NPE when saving empty note'
+                            : form.kind === 'note' ? 'e.g. Deploy checklist'
+                            : 'e.g. RetryHandler.java'" />
+      </div>
+      <div class="flex flex-col gap-1.5">
+        <label class="ke-form-label">Language</label>
+        <p-select [(ngModel)]="form.language" [options]="languages" optionLabel="label" optionValue="value"
+                  styleClass="w-full" appendTo="body" />
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <label class="ke-form-label">Tags <span class="font-normal" style="color: var(--deploy-text-muted)">(comma separated)</span></label>
+      <input pInputText [(ngModel)]="form.tags" placeholder="retry, resilience, transversal" class="w-full" />
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <div class="flex items-center justify-between">
+        <label class="ke-form-label">Content</label>
+        <span class="text-xs" [style.color]="overLimit ? '#DC2626' : 'var(--deploy-text-muted)'">
+          {{ formatSize(contentBytes) }} / 1 MB
+        </span>
+      </div>
+      <textarea [(ngModel)]="form.content" rows="18" spellcheck="false"
+                class="ke-code-editor" placeholder="Paste or type your code / notes here..."></textarea>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" [text]="true" severity="secondary" (onClick)="closeEditor()" />
+    <p-button label="Save" icon="pi pi-check" (onClick)="saveFile()"
+              [loading]="editorSaving()" [disabled]="overLimit" />
+  </ng-template>
+</p-dialog>
+
+<!-- Rename folder dialog -->
+<p-dialog [visible]="renameVisible()" (visibleChange)="renameVisible.set($event)" [modal]="true"
+          [style]="{ width: '90vw', maxWidth: '420px' }" [draggable]="false" [dismissableMask]="true"
+          header="Rename folder">
+  <div class="flex flex-col gap-1.5">
+    <label class="ke-form-label">Folder name</label>
+    <input pInputText [(ngModel)]="renameValue" class="w-full" autofocus
+           (keyup.enter)="saveRename()" />
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" [text]="true" severity="secondary" (onClick)="closeRename()" />
+    <p-button label="Save" icon="pi pi-check" (onClick)="saveRename()" [loading]="renameSaving()" />
+  </ng-template>
+</p-dialog>
+
+<style>
+  .ke-crumb { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 6px;
+    color: var(--deploy-text-secondary); font-weight: 500; transition: background 0.15s; }
+  .ke-crumb:hover { background: var(--deploy-surface-1); }
+  .ke-crumb--active { color: var(--deploy-text); font-weight: 600; }
+
+  .ke-upload-btn { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem;
+    border-radius: 999px; cursor: pointer; color: var(--deploy-text-secondary); transition: background 0.15s; }
+  .ke-upload-btn:hover { background: var(--deploy-surface-1); }
+
+  .ke-section-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--deploy-text-muted); margin-bottom: 0.5rem; }
+
+  .ke-search { position: relative; display: flex; align-items: center; gap: 0.5rem; }
+  .ke-search-icon { position: absolute; left: 0.7rem; font-size: 0.85rem; color: var(--deploy-text-muted); pointer-events: none; z-index: 1; }
+  .ke-search-input { padding-left: 2.1rem !important; padding-right: 2rem !important; }
+  .ke-search-clear { position: absolute; right: 3rem; display: flex; align-items: center; justify-content: center;
+    width: 1.4rem; height: 1.4rem; border-radius: 999px; border: none; background: transparent; cursor: pointer;
+    color: var(--deploy-text-muted); }
+  .ke-search-clear:hover { background: var(--deploy-surface-2); color: var(--deploy-text); }
+
+  .ke-chip { font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.7rem; border-radius: 999px;
+    border: 1px solid var(--deploy-border); background: var(--deploy-surface); color: var(--deploy-text-secondary);
+    cursor: pointer; transition: all 0.15s; }
+  .ke-chip:hover { border-color: var(--deploy-primary, #6366F1); }
+  .ke-chip--active { background: var(--deploy-primary, #6366F1); border-color: var(--deploy-primary, #6366F1); color: #fff; }
+
+  .ke-badge { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 0.05rem 0.35rem; border-radius: 4px; flex-shrink: 0; }
+  .ke-badge--bug { background: rgba(220,38,38,0.12); color: #DC2626; }
+  .ke-badge--note { background: rgba(37,99,235,0.12); color: #2563EB; }
+
+  /* Search result rows: two-line layout with folder path */
+  .ke-row--result { align-items: stretch; }
+  .ke-row-main--result { align-items: flex-start; }
+  .ke-result-body { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; min-width: 0; }
+  .ke-result-name { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
+  .ke-result-path { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.7rem;
+    color: var(--deploy-text-muted); }
+
+  /* Location line inside the editor dialog */
+  .ke-location { display: inline-flex; align-items: center; gap: 0.4rem; align-self: flex-start;
+    font-size: 0.75rem; color: var(--deploy-text-secondary); background: var(--deploy-surface-1);
+    padding: 0.25rem 0.6rem; border-radius: 6px; }
+
+  .ke-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    padding: 0.5rem 0.65rem; border-radius: 8px; border: 1px solid var(--deploy-border);
+    background: var(--deploy-surface); transition: border-color 0.15s, background 0.15s; }
+  .ke-row:hover { border-color: var(--deploy-primary, #6366F1); background: var(--deploy-surface-1); }
+  .ke-row-main { display: flex; align-items: center; gap: 0.55rem; flex: 1; min-width: 0; text-align: left;
+    font-size: 0.85rem; color: var(--deploy-text); }
+  .ke-row-actions { display: flex; align-items: center; gap: 0.1rem; opacity: 0; transition: opacity 0.15s; }
+  .ke-row:hover .ke-row-actions { opacity: 1; }
+
+  .ke-folder-icon { color: #F59E0B; }
+  .ke-file-icon { color: var(--deploy-text-secondary); }
+  .ke-size { margin-left: auto; font-size: 0.7rem; color: var(--deploy-text-muted); flex-shrink: 0; }
+
+  .ke-form-label { font-size: 0.75rem; font-weight: 600; color: var(--deploy-text-secondary); }
+
+  .ke-code-editor { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8rem; line-height: 1.5; padding: 0.75rem; border-radius: 8px; resize: vertical;
+    border: 1px solid var(--deploy-border); background: var(--deploy-surface-1); color: var(--deploy-text);
+    tab-size: 2; }
+  .ke-code-editor:focus { outline: none; border-color: var(--deploy-primary, #6366F1); }
+
+  .ke-dropzone { border: 2px dashed var(--deploy-border); border-radius: 12px; }
+
+  .ke-row[draggable="true"] { cursor: grab; }
+  .ke-row[draggable="true"]:active { cursor: grabbing; }
+
+  /* Highlight a valid drop target (folder row or breadcrumb) */
+  .ke-drop-hover { border-color: var(--deploy-primary, #6366F1) !important;
+    background: color-mix(in srgb, var(--deploy-primary, #6366F1) 12%, transparent) !important;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--deploy-primary, #6366F1) 30%, transparent); }
+</style>

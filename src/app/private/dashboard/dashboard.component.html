@@ -1,0 +1,36 @@
+<div class="mb-6">
+  <h1 class="deploy-page-title">
+    @if (user(); as u) { Hi, {{ u.fullName?.split(' ')[0] }} } @else { Dashboard }
+  </h1>
+  <p class="text-sm mt-1" style="color: var(--deploy-text-muted)">Here's your workspace overview</p>
+</div>
+
+<div class="flex items-center justify-between mb-4">
+  <h2 class="text-sm font-semibold" style="color: var(--deploy-text)">Your projects</h2>
+  <a routerLink="/projects" class="text-xs hover:underline" style="color: var(--deploy-primary)">View all</a>
+</div>
+
+@if (projects().length === 0) {
+  <div class="deploy-empty">
+    <div class="deploy-empty__icon"><i class="pi pi-folder"></i></div>
+    <p class="deploy-empty__title">No projects yet</p>
+    <p class="deploy-empty__desc">Create your first project to start tracking time.</p>
+    <div class="mt-4">
+      <p-button label="New project" icon="pi pi-plus" routerLink="/projects" severity="primary" />
+    </div>
+  </div>
+} @else {
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    @for (p of projects(); track p.id) {
+      <a [routerLink]="['/projects', p.id]" class="deploy-card deploy-card-hover p-5 block">
+        <div class="flex items-center gap-2.5 mb-2">
+          <span class="w-3 h-3 rounded-full flex-shrink-0" [style.background]="p.color"></span>
+          <h3 class="font-semibold text-sm truncate" style="color: var(--deploy-text)">{{ p.name }}</h3>
+        </div>
+        @if (p.description) {
+          <p class="text-xs line-clamp-2" style="color: var(--deploy-text-muted)">{{ p.description }}</p>
+        }
+      </a>
+    }
+  </div>
+}
