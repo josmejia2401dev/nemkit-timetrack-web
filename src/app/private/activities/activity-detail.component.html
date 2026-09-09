@@ -1,4 +1,9 @@
-@if (activity(); as a) {
+@if (!activityLoaded() || !tasksLoaded()) {
+  <div class="deploy-empty">
+    <p class="deploy-empty__title">Loading activity</p>
+  </div>
+} @else {
+  @if (activity(); as a) {
   <div class="mb-6">
     <a [routerLink]="['/projects', a.projectId]" class="text-xs hover:underline inline-flex items-center gap-1 mb-2" style="color: var(--deploy-text-muted)">
       <i class="pi pi-arrow-left text-[10px]"></i> Back to project
@@ -124,7 +129,7 @@
               <div class="deploy-actions">
                 @if (timer.state()?.taskId !== t.id) {
                   <p-button icon="pi pi-play" [rounded]="true" [text]="true" severity="success" size="small"
-                            (onClick)="startTimer(t, $event)" pTooltip="Start timer" tooltipPosition="top" />
+                            (onClick)="onStartTimer(t, $event)" pTooltip="Start timer" tooltipPosition="top" />
                 }
                 <p-button [icon]="t.status === 'done' ? 'pi pi-check-circle' : 'pi pi-circle'"
                           [rounded]="true" [text]="true" size="small"
@@ -210,3 +215,4 @@
     <p-button label="Update" icon="pi pi-check" [loading]="actLoading()" (onClick)="saveActivity()" severity="primary" />
   </ng-template>
 </p-dialog>
+}

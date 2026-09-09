@@ -36,6 +36,8 @@ export class ActivityDetailComponent implements OnInit {
   activityId = 0;
   activity = signal<Activity | null>(null);
   tasks = signal<Task[]>([]);
+  activityLoaded = signal(false);
+  tasksLoaded = signal(false);
 
   // Metrics derived from tasks
   metrics = computed<TaskMetrics>(() => computeTaskMetrics(this.tasks()));
@@ -65,15 +67,27 @@ export class ActivityDetailComponent implements OnInit {
 
   loadActivity(): void {
     this.activitiesService.getById(this.activityId).subscribe({
-      next: (res) => this.activity.set(res.data),
-      error: () => this.router.navigate(['/projects']),
+      next: (res) => {
+        this.activity.set(res.data ?? null);
+        this.activityLoaded.set(true);
+      },
+      error: () => {
+        this.activityLoaded.set(true);
+        this.router.navigate(['/projects']);
+      },
     });
   }
 
   loadTasks(): void {
     this.tasksService.listByActivity(this.activityId).subscribe({
-      next: (res) => this.tasks.set(res.data ?? []),
-      error: () => this.tasks.set([]),
+      next: (res) => {
+        this.tasks.set(res.data ?? []);
+        this.tasksLoaded.set(true);
+      },
+      error: () => {
+        this.tasks.set([]);
+        this.tasksLoaded.set(true);
+      },
     });
   }
 
@@ -114,8 +128,9 @@ export class ActivityDetailComponent implements OnInit {
 
   open(t: Task): void { this.router.navigate(['/tasks', t.id]); }
 
-  startTimer(t: Task, ev: Event): void {
+  onStartTimer(t: Task, ev: Event): void {
     ev.stopPropagation();
+    if (!t?.id || !t.title) return;
     this.timer.start(t.id, t.title);
     if (t.status === 'pending') {
       this.tasksService.update(t.id, { status: 'in_progress' }).subscribe({ next: () => this.loadTasks() });
