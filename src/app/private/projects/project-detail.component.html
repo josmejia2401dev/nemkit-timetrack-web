@@ -1,4 +1,7 @@
-@if (project(); as p) {
+@if (projectLoading()) {
+  <app-content-loader message="Loading project" />
+} @else {
+  @if (project(); as p) {
   <div class="mb-6">
     <a routerLink="/projects" class="text-xs hover:underline inline-flex items-center gap-1 mb-2" style="color: var(--deploy-text-muted)">
       <i class="pi pi-arrow-left text-[10px]"></i> Projects
@@ -153,6 +156,7 @@
       </p-tabpanel>
     </p-tabpanels>
   </p-tabs>
+}
 }
 
 <!-- Activity dialog -->

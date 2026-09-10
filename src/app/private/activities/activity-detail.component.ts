@@ -17,11 +17,12 @@ import { ConfirmService } from '../../core/services/confirm.service';
 import { ChipModule } from 'primeng/chip';
 import { formatDuration, formatDurationShort } from '../../shared/utils/time.util';
 import { computeTaskMetrics, TaskMetrics } from '../../shared/utils/metrics.util';
+import { ContentLoaderComponent } from '../../shared/components/content-loader/content-loader.component';
 
 @Component({
   selector: 'app-activity-detail',
   standalone: true,
-  imports: [FormsModule, RouterLink, ButtonModule, InputTextModule, InputNumberModule, DialogModule, SelectModule, TooltipModule, ChipsModule, CheckboxModule, ChipModule],
+  imports: [FormsModule, RouterLink, ButtonModule, InputTextModule, InputNumberModule, DialogModule, SelectModule, TooltipModule, ChipsModule, CheckboxModule, ChipModule, ContentLoaderComponent],
   templateUrl: './activity-detail.component.html',
 })
 export class ActivityDetailComponent implements OnInit {

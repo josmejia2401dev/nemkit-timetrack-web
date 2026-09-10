@@ -6,6 +6,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { DialogModule } from 'primeng/dialog';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ContentLoaderComponent } from '../../shared/components/content-loader/content-loader.component';
 
 interface Profile {
   id: number;
@@ -25,7 +26,7 @@ interface Profile {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [FormsModule, DatePipe, ButtonModule, InputTextModule, DialogModule],
+  imports: [FormsModule, DatePipe, ButtonModule, InputTextModule, DialogModule, ContentLoaderComponent],
   templateUrl: './profile.component.html',
 })
 export class ProfileComponent implements OnInit {

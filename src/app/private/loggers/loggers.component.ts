@@ -8,11 +8,12 @@ import { SelectModule } from 'primeng/select';
 import { TooltipModule } from 'primeng/tooltip';
 import { LogsService, LogFile, LogEntry } from '../../core/services/logs.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ContentLoaderComponent } from '../../shared/components/content-loader/content-loader.component';
 
 @Component({
   selector: 'app-loggers',
   standalone: true,
-  imports: [FormsModule, DatePipe, ButtonModule, InputTextModule, InputNumberModule, SelectModule, TooltipModule],
+  imports: [FormsModule, DatePipe, ButtonModule, InputTextModule, InputNumberModule, SelectModule, TooltipModule, ContentLoaderComponent],
   templateUrl: './loggers.component.html',
 })
 export class LoggersComponent implements OnInit {
@@ -23,6 +24,7 @@ export class LoggersComponent implements OnInit {
   entries = signal<LogEntry[]>([]);
   total = signal(0);
   loading = signal(false);
+  filesLoading = signal(true);
   expanded = signal<number | null>(null);
 
   selectedFile: string | null = null;
@@ -46,12 +48,13 @@ export class LoggersComponent implements OnInit {
     this.service.listFiles().subscribe({
       next: (res) => {
         this.files.set(res.data ?? []);
+        this.filesLoading.set(false);
         if (res.data?.length && !this.selectedFile) {
           this.selectedFile = res.data[0].name;
           this.read();
         }
       },
-      error: () => this.notify.error('Failed to load log files'),
+      error: () => { this.filesLoading.set(false); this.notify.error('Failed to load log files'); },
     });
   }
 

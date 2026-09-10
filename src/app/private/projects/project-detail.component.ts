@@ -17,11 +17,12 @@ import { NotificationService } from '../../core/services/notification.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { formatDurationShort } from '../../shared/utils/time.util';
 import { computeTaskMetrics, TaskMetrics } from '../../shared/utils/metrics.util';
+import { ContentLoaderComponent } from '../../shared/components/content-loader/content-loader.component';
 
 @Component({
   selector: 'app-project-detail',
   standalone: true,
-  imports: [FormsModule, RouterLink, ButtonModule, InputTextModule, InputNumberModule, DialogModule, TabsModule, TooltipModule, ChipsModule],
+  imports: [FormsModule, RouterLink, ButtonModule, InputTextModule, InputNumberModule, DialogModule, TabsModule, TooltipModule, ChipsModule, ContentLoaderComponent],
   templateUrl: './project-detail.component.html',
 })
 export class ProjectDetailComponent implements OnInit {
@@ -36,6 +37,7 @@ export class ProjectDetailComponent implements OnInit {
 
   projectId = 0;
   project = signal<Project | null>(null);
+  projectLoading = signal(true);
   activities = signal<Activity[]>([]);
   notes = signal<Note[]>([]);
   allTasks = signal<Task[]>([]);
@@ -65,8 +67,8 @@ export class ProjectDetailComponent implements OnInit {
 
   loadProject(): void {
     this.projectsService.getById(this.projectId).subscribe({
-      next: (res) => this.project.set(res.data),
-      error: () => this.router.navigate(['/projects']),
+      next: (res) => { this.project.set(res.data); this.projectLoading.set(false); },
+      error: () => { this.projectLoading.set(false); this.router.navigate(['/projects']); },
     });
   }
 

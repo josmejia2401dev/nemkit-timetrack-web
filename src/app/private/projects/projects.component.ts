@@ -9,11 +9,12 @@ import { ChipsModule } from 'primeng/chips';
 import { ProjectsService, Project } from '../../core/services/projects.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ConfirmService } from '../../core/services/confirm.service';
+import { ContentLoaderComponent } from '../../shared/components/content-loader/content-loader.component';
 
 @Component({
   selector: 'app-projects',
   standalone: true,
-  imports: [FormsModule, ButtonModule, InputTextModule, DialogModule, TooltipModule, ChipsModule],
+  imports: [FormsModule, ButtonModule, InputTextModule, DialogModule, TooltipModule, ChipsModule, ContentLoaderComponent],
   templateUrl: './projects.component.html',
 })
 export class ProjectsComponent implements OnInit {
@@ -28,6 +29,7 @@ export class ProjectsComponent implements OnInit {
   dialogVisible = signal(false);
   editingId: number | null = null;
   loading = signal(false);
+  dataLoading = signal(true);
   form: { name: string; description: string; color: string; company: string; client: string; tags: string[]; technologies: string[] } =
     { name: '', description: '', color: '#6366F1', company: '', client: '', tags: [], technologies: [] };
   colors = ['#6366F1', '#10B981', '#EF4444', '#F59E0B', '#3B82F6', '#EC4899', '#8B5CF6', '#14B8A6'];
@@ -36,8 +38,8 @@ export class ProjectsComponent implements OnInit {
 
   load(): void {
     this.service.list({ status: this.view() }).subscribe({
-      next: (res) => this.projects.set(res.data ?? []),
-      error: () => this.projects.set([]),
+      next: (res) => { this.projects.set(res.data ?? []); this.dataLoading.set(false); },
+      error: () => { this.projects.set([]); this.dataLoading.set(false); },
     });
   }
 

@@ -13,25 +13,29 @@
 </div>
 
 <!-- Summary cards -->
-@if (totals(); as t) {
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-    <div class="deploy-card p-4">
-      <p class="cs-metric-label">Caches</p>
-      <p class="cs-metric-value">{{ t.caches }}</p>
+@if (loading()) {
+  <app-content-loader message="Loading cache" />
+} @else {
+  @if (totals(); as t) {
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div class="deploy-card p-4">
+        <p class="cs-metric-label">Caches</p>
+        <p class="cs-metric-value">{{ t.caches }}</p>
+      </div>
+      <div class="deploy-card p-4">
+        <p class="cs-metric-label">Hits</p>
+        <p class="cs-metric-value">{{ t.hits | number }}</p>
+      </div>
+      <div class="deploy-card p-4">
+        <p class="cs-metric-label">Misses</p>
+        <p class="cs-metric-value">{{ t.misses | number }}</p>
+      </div>
+      <div class="deploy-card p-4">
+        <p class="cs-metric-label">Hit rate</p>
+        <p class="cs-metric-value" [class]="hitRateClass(t.hitRate)">{{ asPercent(t.hitRate) }}%</p>
+      </div>
     </div>
-    <div class="deploy-card p-4">
-      <p class="cs-metric-label">Hits</p>
-      <p class="cs-metric-value">{{ t.hits | number }}</p>
-    </div>
-    <div class="deploy-card p-4">
-      <p class="cs-metric-label">Misses</p>
-      <p class="cs-metric-value">{{ t.misses | number }}</p>
-    </div>
-    <div class="deploy-card p-4">
-      <p class="cs-metric-label">Hit rate</p>
-      <p class="cs-metric-value" [class]="hitRateClass(t.hitRate)">{{ asPercent(t.hitRate) }}%</p>
-    </div>
-  </div>
+  }
 }
 
 <!-- Per-cache table -->
@@ -40,7 +44,9 @@
     <h2 class="text-sm font-semibold" style="color: var(--deploy-text)">Caches</h2>
   </div>
 
-  @if (caches().length === 0) {
+  @if (loading()) {
+    <app-content-loader message="Loading caches" />
+  } @else if (caches().length === 0) {
     <div class="py-12 text-center">
       <p class="text-sm" style="color: var(--deploy-text-muted)">No caches registered</p>
     </div>

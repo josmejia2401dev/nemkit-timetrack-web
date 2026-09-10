@@ -21,7 +21,9 @@
   </button>
 </div>
 
-@if (projects().length === 0) {
+@if (dataLoading()) {
+  <app-content-loader message="Loading projects" />
+} @else if (projects().length === 0) {
   <div class="deploy-empty">
     <div class="deploy-empty__icon"><i class="pi pi-folder"></i></div>
     @if (view() === 'archived') {

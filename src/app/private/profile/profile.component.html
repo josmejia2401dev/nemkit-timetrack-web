@@ -3,7 +3,10 @@
   <h1 class="deploy-page-title">Profile</h1>
 </div>
 
-@if (profile(); as p) {
+@if (loading()) {
+  <app-content-loader message="Loading profile" />
+} @else {
+  @if (profile(); as p) {
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
     <!-- Left: Profile info card -->
@@ -101,6 +104,7 @@
       </div>
     </div>
   </div>
+  }
 }
 
 <!-- Change password dialog -->

@@ -38,7 +38,9 @@
     </span>
   </div>
 
-  @if (entries().length === 0) {
+  @if (filesLoading() || loading()) {
+    <app-content-loader message="Loading logs" />
+  } @else if (entries().length === 0) {
     <div class="py-12 text-center">
       <p class="text-sm" style="color: var(--deploy-text-muted)">No log entries</p>
     </div>

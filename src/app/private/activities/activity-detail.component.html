@@ -1,7 +1,5 @@
 @if (!activityLoaded() || !tasksLoaded()) {
-  <div class="deploy-empty">
-    <p class="deploy-empty__title">Loading activity</p>
-  </div>
+  <app-content-loader message="Loading activity" />
 } @else {
   @if (activity(); as a) {
   <div class="mb-6">

@@ -8,11 +8,12 @@ import { TooltipModule } from 'primeng/tooltip';
 import { CacheAdminService, CacheAdminItem, CacheEntry, CacheEntryDetail } from '../../core/services/cache-admin.service';
 import { ConfirmService } from '../../core/services/confirm.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ContentLoaderComponent } from '../../shared/components/content-loader/content-loader.component';
 
 @Component({
   selector: 'app-cache-stats',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, FormsModule, ButtonModule, DialogModule, InputTextModule, TooltipModule],
+  imports: [DatePipe, DecimalPipe, FormsModule, ButtonModule, DialogModule, InputTextModule, TooltipModule, ContentLoaderComponent],
   templateUrl: './cache-stats.component.html',
 })
 export class CacheStatsComponent implements OnInit {

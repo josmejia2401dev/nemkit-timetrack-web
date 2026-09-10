@@ -10,7 +10,9 @@
   <a routerLink="/projects" class="text-xs hover:underline" style="color: var(--deploy-primary)">View all</a>
 </div>
 
-@if (projects().length === 0) {
+@if (loading()) {
+  <app-content-loader message="Loading projects" />
+} @else if (projects().length === 0) {
   <div class="deploy-empty">
     <div class="deploy-empty__icon"><i class="pi pi-folder"></i></div>
     <p class="deploy-empty__title">No projects yet</p>
