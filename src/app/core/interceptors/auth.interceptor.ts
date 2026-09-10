@@ -5,6 +5,7 @@ import { AuthStore } from '../store/auth.store';
 import { ApiService } from '../services/api.service';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { SKIP_AUTH } from '../http/http-context.tokens';
 
 const PUBLIC_PATHS = ['/auth/login', '/auth/refresh', '/auth/forgot-password'];
 
@@ -16,7 +17,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const api = inject(ApiService);
   const router = inject(Router);
 
-  if (PUBLIC_PATHS.some(p => req.url.includes(p))) return next(req);
+  if (req.context.get(SKIP_AUTH) || PUBLIC_PATHS.some(p => req.url.includes(p))) return next(req);
 
   const token = store.accessToken();
   if (!token) {

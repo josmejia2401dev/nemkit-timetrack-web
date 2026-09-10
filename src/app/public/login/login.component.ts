@@ -7,11 +7,12 @@ import { PasswordModule } from 'primeng/password';
 import { MessageModule } from 'primeng/message';
 import { ApiService } from '../../core/services/api.service';
 import { AuthStore } from '../../core/store/auth.store';
+import { BackendStatusTagComponent } from '../../shared/components/backend-status-tag/backend-status-tag.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, ButtonModule, InputTextModule, PasswordModule, MessageModule],
+  imports: [FormsModule, ButtonModule, InputTextModule, PasswordModule, MessageModule, BackendStatusTagComponent],
   templateUrl: './login.component.html',
 })
 export class LoginComponent {

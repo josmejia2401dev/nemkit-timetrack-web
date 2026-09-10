@@ -3,11 +3,14 @@
   <aside [class]="sidebarOpen() ? 'deploy-sidebar flex flex-col w-64 fixed inset-y-0 z-30' : 'deploy-sidebar hidden lg:flex flex-col w-64 fixed inset-y-0 z-30'">
 
     <!-- Brand -->
-    <div class="deploy-sidebar-brand">
-      <div class="deploy-sidebar-brand__icon">
-        <i class="pi pi-clock"></i>
+    <div class="deploy-sidebar-brand flex-col !items-stretch !gap-3">
+      <div class="flex items-center gap-3">
+        <div class="deploy-sidebar-brand__icon">
+          <i class="pi pi-clock"></i>
+        </div>
+        <span class="deploy-sidebar-brand__title">Nemkit TimeTrack</span>
       </div>
-      <span class="deploy-sidebar-brand__title">Nemkit TimeTrack</span>
+      <app-backend-status-tag pollProfile="relaxed" />
     </div>
 
     <!-- Navigation -->
@@ -36,11 +39,14 @@
     <button (click)="toggleSidebar()" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
       <i class="pi pi-bars"></i>
     </button>
-    <div class="flex items-center gap-2">
-      <div class="deploy-sidebar-brand__icon" style="width:28px;height:28px;font-size:0.75rem">
-        <i class="pi pi-clock"></i>
+    <div class="flex flex-col items-center gap-1">
+      <div class="flex items-center gap-2">
+        <div class="deploy-sidebar-brand__icon" style="width:28px;height:28px;font-size:0.75rem">
+          <i class="pi pi-clock"></i>
+        </div>
+        <span class="text-sm font-bold">Nemkit TimeTrack</span>
       </div>
-      <span class="text-sm font-bold">Nemkit TimeTrack</span>
+      <app-backend-status-tag [compact]="true" />
     </div>
     <button (click)="logout()" class="p-2 rounded-lg hover:bg-red-50 transition-colors">
       <i class="pi pi-sign-out text-red-500"></i>

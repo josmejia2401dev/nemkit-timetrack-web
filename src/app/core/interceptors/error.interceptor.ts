@@ -2,6 +2,7 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { NotificationService } from '../services/notification.service';
+import { SKIP_ERROR_TOAST } from '../http/http-context.tokens';
 
 /**
  * Interceptor que muestra toast automáticamente en errores HTTP.
@@ -9,6 +10,8 @@ import { NotificationService } from '../services/notification.service';
  */
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notifications = inject(NotificationService);
+
+  if (req.context.get(SKIP_ERROR_TOAST)) return next(req);
 
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {

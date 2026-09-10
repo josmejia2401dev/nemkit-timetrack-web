@@ -2,11 +2,12 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthStore } from '../../core/store/auth.store';
 import { TimerWidgetComponent } from '../../shared/components/timer-widget/timer-widget.component';
+import { BackendStatusTagComponent } from '../../shared/components/backend-status-tag/backend-status-tag.component';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TimerWidgetComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TimerWidgetComponent, BackendStatusTagComponent],
   templateUrl: './layout.component.html',
 })
 export class LayoutComponent {
