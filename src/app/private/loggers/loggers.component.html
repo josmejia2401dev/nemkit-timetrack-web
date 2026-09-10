@@ -3,6 +3,47 @@
   <p-button icon="pi pi-refresh" [rounded]="true" [text]="true" severity="secondary" (onClick)="loadFiles()" pTooltip="Reload files" tooltipPosition="left" />
 </div>
 
+<!-- System resource metrics -->
+@if (metrics(); as m) {
+  <div class="deploy-card p-4 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-sm font-semibold" style="color: var(--deploy-text)">System resources</h2>
+      <p-button icon="pi pi-refresh" [rounded]="true" [text]="true" severity="secondary" size="small"
+                (onClick)="loadMetrics()" [loading]="metricsLoading()" pTooltip="Reload metrics" tooltipPosition="left" />
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="sm-metric">
+        <p class="sm-metric-label">Process memory (RSS)</p>
+        <p class="sm-metric-value">{{ formatMb(m.process.rssMb) }}</p>
+        <p class="sm-metric-sub">Heap {{ formatMb(m.process.heapUsedMb) }} / {{ formatMb(m.process.heapTotalMb) }}</p>
+      </div>
+      <div class="sm-metric">
+        <p class="sm-metric-label">System memory</p>
+        <p class="sm-metric-value">{{ m.system.usedMemPercent }}%</p>
+        <p class="sm-metric-sub">{{ formatMb(m.system.usedMemMb) }} / {{ formatMb(m.system.totalMemMb) }}</p>
+      </div>
+      <div class="sm-metric">
+        <p class="sm-metric-label">CPU load (1m)</p>
+        <p class="sm-metric-value">{{ m.system.loadAverage[0] }}</p>
+        <p class="sm-metric-sub">{{ m.system.cpuCores }} cores</p>
+      </div>
+      <div class="sm-metric">
+        <p class="sm-metric-label">Disk</p>
+        @if (m.disk) {
+          <p class="sm-metric-value">{{ m.disk.usedPercent }}%</p>
+          <p class="sm-metric-sub">{{ formatMb(m.disk.freeMb) }} free of {{ formatMb(m.disk.totalMb) }}</p>
+        } @else {
+          <p class="sm-metric-value">—</p>
+          <p class="sm-metric-sub">not available</p>
+        }
+      </div>
+    </div>
+    <p class="text-[11px] mt-3" style="color: var(--deploy-text-muted)">
+      Process uptime {{ formatUptime(m.process.uptimeSeconds) }} · Node {{ m.process.nodeVersion }} · {{ m.system.platform }}/{{ m.system.arch }}
+    </p>
+  </div>
+}
+
 <!-- Filters -->
 <div class="deploy-card p-4 mb-4">
   <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -55,6 +96,9 @@
             </span>
             <span class="text-xs flex-1 min-w-0" style="color: var(--deploy-text)"
                   [class.truncate]="expanded() !== $index">{{ e.message }}</span>
+            @if (isRequestReport(e)) {
+              <span class="sm-req-summary shrink-0">{{ requestSummary(e) }}</span>
+            }
             @if (e.requestId) {
               <span class="text-[10px] font-mono shrink-0" style="color: var(--deploy-text-muted)">{{ e.requestId }}</span>
             }
@@ -83,4 +127,12 @@
   .log-level--info { background: rgba(59,130,246,0.12); color: #2563EB; }
   .log-level--http { background: rgba(139,92,246,0.12); color: #7C3AED; }
   .log-level--debug { background: var(--deploy-surface-2); color: var(--deploy-text-muted); }
+
+  .sm-metric { padding: 0.5rem 0.75rem; border-radius: 8px; background: var(--deploy-surface-1); }
+  .sm-metric-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--deploy-text-muted); margin-bottom: 0.25rem; }
+  .sm-metric-value { font-size: 1.25rem; font-weight: 700; color: var(--deploy-text); line-height: 1.1; }
+  .sm-metric-sub { font-size: 0.7rem; color: var(--deploy-text-muted); margin-top: 0.15rem; }
+
+  .sm-req-summary { font-size: 0.65rem; font-family: ui-monospace, monospace; font-weight: 600;
+    padding: 0.05rem 0.4rem; border-radius: 4px; background: rgba(139,92,246,0.1); color: #7C3AED; white-space: nowrap; }
 </style>

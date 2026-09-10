@@ -7,6 +7,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
 import { TooltipModule } from 'primeng/tooltip';
 import { LogsService, LogFile, LogEntry } from '../../core/services/logs.service';
+import { SystemMetricsService, SystemMetrics } from '../../core/services/system-metrics.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ContentLoaderComponent } from '../../shared/components/content-loader/content-loader.component';
 
@@ -18,7 +19,11 @@ import { ContentLoaderComponent } from '../../shared/components/content-loader/c
 })
 export class LoggersComponent implements OnInit {
   private service = inject(LogsService);
+  private metricsService = inject(SystemMetricsService);
   private notify = inject(NotificationService);
+
+  metrics = signal<SystemMetrics | null>(null);
+  metricsLoading = signal(false);
 
   files = signal<LogFile[]>([]);
   entries = signal<LogEntry[]>([]);
@@ -42,7 +47,15 @@ export class LoggersComponent implements OnInit {
     { label: 'Fatal', value: 'fatal' },
   ];
 
-  ngOnInit(): void { this.loadFiles(); }
+  ngOnInit(): void { this.loadMetrics(); this.loadFiles(); }
+
+  loadMetrics(): void {
+    this.metricsLoading.set(true);
+    this.metricsService.getMetrics().subscribe({
+      next: (res) => { this.metrics.set(res.data); this.metricsLoading.set(false); },
+      error: () => { this.metricsLoading.set(false); },
+    });
+  }
 
   loadFiles(): void {
     this.service.listFiles().subscribe({
@@ -101,5 +114,34 @@ export class LoggersComponent implements OnInit {
   metaOf(entry: LogEntry): string {
     const { timestamp, level, service, message, stack, raw, ...meta } = entry;
     return Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
+  }
+
+  formatMb(mb: number | undefined | null): string {
+    if (mb == null) return '—';
+    if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
+    return `${mb.toFixed(mb < 10 ? 2 : 0)} MB`;
+  }
+
+  formatUptime(seconds: number | undefined | null): string {
+    if (seconds == null) return '—';
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (d > 0) return `${d}d ${h}h`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  }
+
+  isRequestReport(entry: LogEntry): boolean {
+    return entry['event'] === 'request.report';
+  }
+
+  requestSummary(entry: LogEntry): string {
+    const parts: string[] = [];
+    if (entry['durationMs'] != null) parts.push(`${entry['durationMs']}ms`);
+    if (entry['memHeapDeltaMb'] != null) parts.push(`Δ${entry['memHeapDeltaMb']}MB`);
+    const cpu = (entry['cpuUserMs'] ?? 0) + (entry['cpuSystemMs'] ?? 0);
+    if (entry['cpuUserMs'] != null) parts.push(`cpu ${cpu}ms`);
+    return parts.join(' · ');
   }
 }
