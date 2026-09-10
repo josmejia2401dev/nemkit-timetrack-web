@@ -145,10 +145,10 @@ export class LoggersComponent implements OnInit {
 
   requestSummary(entry: LogEntry): string {
     const parts: string[] = [];
-    if (entry['durationMs'] != null) parts.push(`${entry['durationMs']}ms`);
-    if (entry['memHeapDeltaMb'] != null) parts.push(`Δ${entry['memHeapDeltaMb']}MB`);
-    const cpu = (entry['cpuUserMs'] ?? 0) + (entry['cpuSystemMs'] ?? 0);
-    if (entry['cpuUserMs'] != null) parts.push(`cpu ${cpu}ms`);
+    if (entry['responseTimeMs'] != null) parts.push(`${entry['responseTimeMs']}ms`);
+    if (entry['cpuTimeMs'] != null) parts.push(`cpu ${entry['cpuTimeMs']}ms`);
+    if (entry['memoryConsumedMb'] != null) parts.push(`Δ${entry['memoryConsumedMb']}MB`);
+    if (entry['totalMemoryConsumedMb'] != null) parts.push(`rss ${entry['totalMemoryConsumedMb']}MB`);
     return parts.join(' · ');
   }
 
