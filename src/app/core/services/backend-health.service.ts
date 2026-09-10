@@ -8,10 +8,10 @@ import { SKIP_AUTH, SKIP_ERROR_TOAST, SKIP_LOADING } from '../http/http-context.
 export type BackendHealthStatus = 'checking' | 'online' | 'offline';
 export type BackendHealthPollProfile = 'aggressive' | 'relaxed';
 
-const PROBE_TIMEOUT_MS = 10_000;
-const OFFLINE_INTERVAL_MS = 15_000;
-const AGGRESSIVE_ONLINE_INTERVAL_MS = 15_000;
-const RELAXED_ONLINE_INTERVAL_MS = 60_000;
+const PROBE_TIMEOUT_MS = 45_000;
+const OFFLINE_INTERVAL_MS = 45_000;
+const AGGRESSIVE_ONLINE_INTERVAL_MS = 60_000;
+const RELAXED_ONLINE_INTERVAL_MS = 60_000 * 5; // 5 minutes
 
 @Injectable({ providedIn: 'root' })
 export class BackendHealthService {
