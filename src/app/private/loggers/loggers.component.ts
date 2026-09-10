@@ -30,12 +30,14 @@ export class LoggersComponent implements OnInit {
   total = signal(0);
   loading = signal(false);
   filesLoading = signal(true);
-  expanded = signal<number | null>(null);
+  expanded = signal<string | number | null>(null);
 
   selectedFile: string | null = null;
   level: string | null = null;
   search = '';
+  requestId = '';
   limit = 200;
+  groupByRequest = signal(false);
 
   levelOptions = [
     { label: 'All levels', value: null },
@@ -79,6 +81,7 @@ export class LoggersComponent implements OnInit {
       file: this.selectedFile,
       level: this.level ?? undefined,
       search: this.search || undefined,
+      requestId: this.requestId || undefined,
       limit: this.limit,
     }).subscribe({
       next: (res) => {
@@ -90,8 +93,12 @@ export class LoggersComponent implements OnInit {
     });
   }
 
-  toggle(i: number): void {
-    this.expanded.set(this.expanded() === i ? null : i);
+  toggle(key: string | number): void {
+    this.expanded.set(this.expanded() === key ? null : key);
+  }
+
+  groupKey(requestId: string, index: number): string {
+    return `${requestId}#${index}`;
   }
 
   levelClass(lvl: string): string {
@@ -143,5 +150,31 @@ export class LoggersComponent implements OnInit {
     const cpu = (entry['cpuUserMs'] ?? 0) + (entry['cpuSystemMs'] ?? 0);
     if (entry['cpuUserMs'] != null) parts.push(`cpu ${cpu}ms`);
     return parts.join(' · ');
+  }
+
+  viewRequest(id: string | undefined): void {
+    if (!id) return;
+    this.requestId = id;
+    this.read();
+  }
+
+  clearRequestFilter(): void {
+    this.requestId = '';
+    this.read();
+  }
+
+  toggleGrouping(): void {
+    this.groupByRequest.update((v) => !v);
+  }
+
+  groupedEntries(): { requestId: string; entries: LogEntry[] }[] {
+    const groups = new Map<string, LogEntry[]>();
+    const noId = '(no request id)';
+    for (const e of this.entries()) {
+      const key = (e.requestId as string) || noId;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(e);
+    }
+    return Array.from(groups.entries()).map(([requestId, entries]) => ({ requestId, entries }));
   }
 }
